@@ -120,20 +120,9 @@ export default function WishForm({ mode, initialData }: WishFormProps) {
     setIsSubmitting(true);
     try {
       const supabase = createClient();
-
-      // Debug: check both session and user
-      const { data: sessionData } = await supabase.auth.getSession();
-      console.log("Session:", sessionData.session ? "EXISTS" : "NULL");
-      console.log(
-        "Access token:",
-        sessionData.session?.access_token ? "YES" : "NO",
-      );
-
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      console.log("User:", user?.id || "NULL");
-
       if (!user) throw new Error("Not authenticated");
 
       if (mode === "create") {

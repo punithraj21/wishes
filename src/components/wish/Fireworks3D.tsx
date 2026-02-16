@@ -237,24 +237,12 @@ function FireworksScene({ colors }: { colors: string[] }) {
       {/* Explosion particles */}
       <points ref={pointsRef}>
         <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            array={positions}
-            count={MAX_PARTICLES}
-            itemSize={3}
-          />
+          <bufferAttribute attach="attributes-position" args={[positions, 3]} />
           <bufferAttribute
             attach="attributes-color"
-            array={particleColors}
-            count={MAX_PARTICLES}
-            itemSize={3}
+            args={[particleColors, 3]}
           />
-          <bufferAttribute
-            attach="attributes-size"
-            array={sizes}
-            count={MAX_PARTICLES}
-            itemSize={1}
-          />
+          <bufferAttribute attach="attributes-size" args={[sizes, 1]} />
         </bufferGeometry>
         <pointsMaterial
           map={circleTexture}
@@ -273,22 +261,10 @@ function FireworksScene({ colors }: { colors: string[] }) {
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
-            array={trailPositions}
-            count={MAX_TRAILS}
-            itemSize={3}
+            args={[trailPositions, 3]}
           />
-          <bufferAttribute
-            attach="attributes-color"
-            array={trailColors}
-            count={MAX_TRAILS}
-            itemSize={3}
-          />
-          <bufferAttribute
-            attach="attributes-size"
-            array={trailSizes}
-            count={MAX_TRAILS}
-            itemSize={1}
-          />
+          <bufferAttribute attach="attributes-color" args={[trailColors, 3]} />
+          <bufferAttribute attach="attributes-size" args={[trailSizes, 1]} />
         </bufferGeometry>
         <pointsMaterial
           map={circleTexture}
