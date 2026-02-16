@@ -27,7 +27,6 @@ export default function NameReveal({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden"
-      style={{ backgroundColor: theme.colors.background }}
     >
       {/* Background gradient orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">

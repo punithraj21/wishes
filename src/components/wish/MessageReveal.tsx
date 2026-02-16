@@ -49,18 +49,7 @@ export default function MessageReveal({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="min-h-screen flex flex-col items-center justify-center p-4 md:p-6 relative"
-      style={{ backgroundColor: theme.colors.background }}
     >
-      {/* Background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl"
-          style={{ backgroundColor: `${theme.colors.primary}08` }}
-          animate={{ scale: [1, 1.3, 1] }}
-          transition={{ duration: 6, repeat: Infinity }}
-        />
-      </div>
-
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

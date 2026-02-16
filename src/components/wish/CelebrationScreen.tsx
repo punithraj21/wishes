@@ -109,7 +109,6 @@ export default function CelebrationScreen({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden"
-      style={{ backgroundColor: theme.colors.background }}
     >
       {/* Three.js 3D Fireworks (background) */}
       <Fireworks3D colors={fireworkColors} />
@@ -125,13 +124,13 @@ export default function CelebrationScreen({
         className="text-center space-y-6 relative z-10"
       >
         {/* Emoji burst */}
-        <motion.div
+        {/* <motion.div
           animate={{ rotate: [0, 10, -10, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
           className="text-7xl md:text-8xl"
         >
           🎉
-        </motion.div>
+        </motion.div> */}
 
         {/* Title */}
         <motion.h1

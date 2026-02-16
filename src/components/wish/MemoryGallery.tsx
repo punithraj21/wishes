@@ -61,7 +61,6 @@ export default function MemoryGallery({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="min-h-screen flex flex-col items-center justify-center p-6"
-        style={{ backgroundColor: theme.colors.background }}
       >
         <p className="text-lg" style={{ color: theme.colors.textMuted }}>
           No memories to show
@@ -88,7 +87,6 @@ export default function MemoryGallery({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="min-h-screen flex flex-col items-center justify-center p-4 md:p-6 relative"
-      style={{ backgroundColor: theme.colors.background }}
     >
       {/* Header */}
       <motion.div

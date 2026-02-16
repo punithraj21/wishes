@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { AnimatePresence } from "framer-motion";
+import { useState, useRef, useCallback } from "react";
+import { motion, useInView } from "framer-motion";
+import dynamic from "next/dynamic";
 import { Wish, WishMedia, ThemeConfig } from "@/lib/types";
 import { THEMES } from "@/lib/constants";
 import IntroScreen from "./IntroScreen";
@@ -9,25 +10,28 @@ import NameReveal from "./NameReveal";
 import MemoryGallery from "./MemoryGallery";
 import MessageReveal from "./MessageReveal";
 import CelebrationScreen from "./CelebrationScreen";
-import BackgroundMusic from "./BackgroundMusic";
 import BirthdayCake from "./BirthdayCake";
 import FloatingBalloons from "./FloatingBalloons";
+import BackgroundMusic from "./BackgroundMusic";
 
-type StepKey =
-  | "intro"
-  | "name"
-  | "gallery"
-  | "message"
-  | "cake"
-  | "celebration";
+// Lazy load Three.js components
+const Starfield = dynamic(() => import("./Starfield"), {
+  ssr: false,
+  loading: () => null,
+});
 
 interface WishExperienceProps {
   wish: Wish;
 }
 
+/**
+ * Single-page vertical scroll wish experience.
+ */
 export default function WishExperience({ wish }: WishExperienceProps) {
-  const [currentStep, setCurrentStep] = useState<StepKey>("intro");
   const theme: ThemeConfig = THEMES[wish.theme] || THEMES.cartoon;
+  const [started, setStarted] = useState(false);
+  const [unlockedSections, setUnlockedSections] = useState(1);
+  const [balloonsFlyAway, setBalloonsFlyAway] = useState(false);
 
   const images = (wish.wish_media || [])
     .filter((m: WishMedia) => m.type === "image")
@@ -37,115 +41,177 @@ export default function WishExperience({ wish }: WishExperienceProps) {
     (m: WishMedia) => m.type === "audio",
   );
 
-  const steps: StepKey[] = [
-    "intro",
-    "name",
-    "gallery",
-    "message",
-    "cake",
-    "celebration",
-  ];
+  // Build list of sections to show
+  const sections: string[] = ["intro", "name"];
+  if (images.length > 0) sections.push("gallery");
+  if (wish.message?.trim()) sections.push("message");
+  sections.push("cake", "celebration");
 
-  const goToStep = (step: StepKey) => {
-    setCurrentStep(step);
-  };
+  const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  const nextStep = () => {
-    const currentIdx = steps.indexOf(currentStep);
-    let nextIdx = currentIdx + 1;
-
-    // Skip gallery if no images
-    if (steps[nextIdx] === "gallery" && images.length === 0) {
-      nextIdx++;
+  const scrollToSection = useCallback((index: number) => {
+    const el = sectionRefs.current[index];
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-    // Skip message if no message
-    if (steps[nextIdx] === "message" && !wish.message?.trim()) {
-      nextIdx++;
-    }
+  }, []);
 
-    if (nextIdx < steps.length) {
-      goToStep(steps[nextIdx]);
-    }
-  };
+  const unlockNext = useCallback(() => {
+    setUnlockedSections((prev) => {
+      const next = prev + 1;
+      setTimeout(() => scrollToSection(next - 1), 300);
+      return next;
+    });
+  }, [scrollToSection]);
 
-  const replay = () => {
-    setCurrentStep("intro");
-  };
+  const handleIntroNext = useCallback(() => {
+    setStarted(true);
+    setBalloonsFlyAway(true); // Fly away after intro (first screen only)
+    unlockNext();
+  }, [unlockNext]);
 
-  // Show balloons from name reveal onward
-  const showBalloons = currentStep !== "intro";
+  const handleCakeNext = useCallback(() => {
+    unlockNext();
+  }, [unlockNext]);
+
+  const handleReplay = useCallback(() => {
+    setUnlockedSections(1);
+    setStarted(false);
+    setBalloonsFlyAway(false);
+    scrollToSection(0);
+  }, [scrollToSection]);
 
   return (
-    <div className="relative">
-      {/* Floating balloons (behind content) */}
-      {showBalloons && <FloatingBalloons theme={theme} count={10} />}
+    <div
+      className="relative w-full overflow-y-auto overflow-x-hidden"
+      style={{
+        backgroundColor: theme.colors.background,
+        scrollBehavior: "smooth",
+      }}
+    >
+      {/* Persistent Three.js starfield background */}
+      <Starfield />
 
-      <AnimatePresence mode="wait">
-        {currentStep === "intro" && (
-          <IntroScreen
-            key="intro"
-            personName={wish.person_name}
-            theme={theme}
-            onNext={nextStep}
-          />
-        )}
-        {currentStep === "name" && (
-          <NameReveal
-            key="name"
-            personName={wish.person_name}
-            title={wish.title}
-            specialDate={wish.special_date}
-            theme={theme}
-            onNext={nextStep}
-          />
-        )}
-        {currentStep === "gallery" && (
-          <MemoryGallery
-            key="gallery"
-            images={images}
-            theme={theme}
-            onNext={nextStep}
-          />
-        )}
-        {currentStep === "message" && (
-          <MessageReveal
-            key="message"
-            message={wish.message}
-            theme={theme}
-            onNext={nextStep}
-          />
-        )}
-        {currentStep === "cake" && (
-          <CakeStep
-            key="cake"
-            personName={wish.person_name}
-            theme={theme}
-            onNext={nextStep}
-          />
-        )}
-        {currentStep === "celebration" && (
-          <CelebrationScreen
-            key="celebration"
-            personName={wish.person_name}
-            theme={theme}
-            onReplay={replay}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Background music - invisible, auto-plays after intro */}
+      {/* Background music */}
       <BackgroundMusic
         src={audio ? audio.file_url : "/music.mp3"}
-        play={currentStep !== "intro"}
+        play={started}
+      />
+
+      {/* Balloons — visible during intro (first screen), then fly away */}
+      <FloatingBalloons theme={theme} count={6} flyAway={balloonsFlyAway} />
+
+      {/* === SECTIONS === */}
+      {sections.map((section, idx) => {
+        const isUnlocked = idx < unlockedSections;
+        if (!isUnlocked) return null;
+
+        return (
+          <div
+            key={section}
+            ref={(el) => {
+              sectionRefs.current[idx] = el;
+            }}
+          >
+            {section === "intro" && (
+              <IntroScreen
+                personName={wish.person_name}
+                theme={theme}
+                onNext={handleIntroNext}
+              />
+            )}
+
+            {section === "name" && (
+              <ScrollSection theme={theme}>
+                <NameReveal
+                  personName={wish.person_name}
+                  title={wish.title}
+                  specialDate={wish.special_date}
+                  theme={theme}
+                  onNext={unlockNext}
+                />
+              </ScrollSection>
+            )}
+
+            {section === "gallery" && (
+              <ScrollSection theme={theme}>
+                <MemoryGallery
+                  images={images}
+                  theme={theme}
+                  onNext={unlockNext}
+                />
+              </ScrollSection>
+            )}
+
+            {section === "message" && (
+              <ScrollSection theme={theme}>
+                <MessageReveal
+                  message={wish.message}
+                  theme={theme}
+                  onNext={unlockNext}
+                />
+              </ScrollSection>
+            )}
+
+            {section === "cake" && (
+              <CakeSection
+                personName={wish.person_name}
+                theme={theme}
+                onNext={handleCakeNext}
+              />
+            )}
+
+            {section === "celebration" && (
+              <CelebrationScreen
+                personName={wish.person_name}
+                theme={theme}
+                onReplay={handleReplay}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* Wrapper for sections that animate in when scrolled into view */
+function ScrollSection({
+  children,
+  theme,
+}: {
+  children: React.ReactNode;
+  theme: ThemeConfig;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, amount: 0.2 });
+
+  return (
+    <div ref={ref} className="min-h-screen relative">
+      <motion.div
+        initial={{ opacity: 0, y: 60 }}
+        animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 60 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="min-h-screen"
+        style={{ backgroundColor: "transparent" }}
+      >
+        {children}
+      </motion.div>
+      {/* Gradient divider between sections */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
+        style={{
+          background: `linear-gradient(to bottom, transparent, ${theme.colors.background}40)`,
+        }}
       />
     </div>
   );
 }
 
-/* Cake Step - wraps BirthdayCake with full-screen layout */
-import { motion } from "framer-motion";
+/* Cake section — doesn't need ScrollSection wrapper, has its own layout */
+import { motion as m } from "framer-motion";
 
-function CakeStep({
+function CakeSection({
   personName,
   theme,
   onNext,
@@ -154,53 +220,57 @@ function CakeStep({
   theme: ThemeConfig;
   onNext: () => void;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, amount: 0.3 });
+
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden"
-      style={{ backgroundColor: theme.colors.background }}
-    >
-      {/* Background glow */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          className="absolute top-1/3 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full blur-3xl"
-          style={{ backgroundColor: `${theme.colors.primary}10` }}
-          animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
-          transition={{ duration: 4, repeat: Infinity }}
-        />
-      </div>
-
-      {/* Title */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="text-center mb-8 relative z-10"
+    <div ref={ref} className="min-h-screen relative">
+      <m.div
+        initial={{ opacity: 0, y: 60 }}
+        animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 60 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden"
       >
-        <h2
-          className="text-2xl md:text-4xl font-bold mb-2"
-          style={{ color: theme.colors.text, fontFamily: theme.font }}
-        >
-          🎂 Time to blow the candles!
-        </h2>
-        <p
-          className="text-sm md:text-base"
-          style={{ color: theme.colors.textMuted }}
-        >
-          A special cake for {personName}
-        </p>
-      </motion.div>
+        {/* Background glow */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <m.div
+            className="absolute top-1/3 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full blur-3xl"
+            style={{ backgroundColor: `${theme.colors.primary}10` }}
+            animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
+            transition={{ duration: 4, repeat: Infinity }}
+          />
+        </div>
 
-      {/* Interactive Cake */}
-      <div className="relative z-10">
-        <BirthdayCake
-          personName={personName}
-          theme={theme}
-          onAllCandlesBlown={onNext}
-        />
-      </div>
-    </motion.div>
+        {/* Title */}
+        <m.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ delay: 0.3 }}
+          className="text-center mb-8 relative z-10"
+        >
+          <h2
+            className="text-2xl md:text-4xl font-bold mb-2"
+            style={{ color: theme.colors.text, fontFamily: theme.font }}
+          >
+            🎂 Time to blow the candles!
+          </h2>
+          <p
+            className="text-sm md:text-base"
+            style={{ color: theme.colors.textMuted }}
+          >
+            A special cake for {personName}
+          </p>
+        </m.div>
+
+        {/* Interactive Cake */}
+        <div className="relative z-10">
+          <BirthdayCake
+            personName={personName}
+            theme={theme}
+            onAllCandlesBlown={onNext}
+          />
+        </div>
+      </m.div>
+    </div>
   );
 }
