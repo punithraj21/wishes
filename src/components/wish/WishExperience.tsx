@@ -9,7 +9,7 @@ import NameReveal from "./NameReveal";
 import MemoryGallery from "./MemoryGallery";
 import MessageReveal from "./MessageReveal";
 import CelebrationScreen from "./CelebrationScreen";
-import AudioPlayer from "./AudioPlayer";
+import BackgroundMusic from "./BackgroundMusic";
 import BirthdayCake from "./BirthdayCake";
 import FloatingBalloons from "./FloatingBalloons";
 
@@ -133,14 +133,11 @@ export default function WishExperience({ wish }: WishExperienceProps) {
         )}
       </AnimatePresence>
 
-      {/* Audio player - visible after intro */}
-      {audio && currentStep !== "intro" && (
-        <AudioPlayer
-          audioUrl={audio.file_url}
-          autoPlay={true}
-          accentColor={theme.colors.primary}
-        />
-      )}
+      {/* Background music - invisible, auto-plays after intro */}
+      <BackgroundMusic
+        src={audio ? audio.file_url : "/music.mp3"}
+        play={currentStep !== "intro"}
+      />
     </div>
   );
 }
