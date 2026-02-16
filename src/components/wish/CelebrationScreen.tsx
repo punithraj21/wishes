@@ -25,8 +25,16 @@ export default function CelebrationScreen({
   onReplay,
 }: CelebrationScreenProps) {
   const hasLaunched = useRef(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const launchConfetti = useCallback(() => {
+    if (!canvasRef.current) return;
+
+    const myConfetti = confetti.create(canvasRef.current, {
+      resize: true,
+      useWorker: true,
+    });
+
     const duration = 4000;
     const end = Date.now() + duration;
     const colors = [
@@ -38,7 +46,7 @@ export default function CelebrationScreen({
     ];
 
     // Initial burst
-    confetti({
+    myConfetti({
       particleCount: 100,
       spread: 70,
       origin: { y: 0.6 },
@@ -52,14 +60,14 @@ export default function CelebrationScreen({
         return;
       }
 
-      confetti({
+      myConfetti({
         particleCount: 3,
         angle: 60,
         spread: 55,
         origin: { x: 0 },
         colors,
       });
-      confetti({
+      myConfetti({
         particleCount: 3,
         angle: 120,
         spread: 55,
@@ -72,7 +80,7 @@ export default function CelebrationScreen({
   }, [theme.colors.primary, theme.colors.secondary, theme.colors.accent]);
 
   useEffect(() => {
-    if (!hasLaunched.current) {
+    if (!hasLaunched.current && canvasRef.current) {
       hasLaunched.current = true;
       launchConfetti();
     }
@@ -110,8 +118,15 @@ export default function CelebrationScreen({
       exit={{ opacity: 0 }}
       className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden"
     >
-      {/* Three.js 3D Fireworks (background) */}
-      <Fireworks3D colors={fireworkColors} />
+      {/* Dedicated Confetti Canvas */}
+      <canvas
+        ref={canvasRef}
+        className="fixed inset-0 pointer-events-none z-20"
+        style={{ width: "100%", height: "100%" }}
+      />
+
+      {/* Three.js 3D Fireworks (background) - Disabled for diagnostic */}
+      {/* <Fireworks3D colors={fireworkColors} /> */}
 
       {/* CSS Fireworks (mid-layer) */}
       <Fireworks theme={theme} />
@@ -123,15 +138,6 @@ export default function CelebrationScreen({
         transition={{ type: "spring", damping: 10, delay: 0.3 }}
         className="text-center space-y-6 relative z-10"
       >
-        {/* Emoji burst */}
-        {/* <motion.div
-          animate={{ rotate: [0, 10, -10, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="text-7xl md:text-8xl"
-        >
-          🎉
-        </motion.div> */}
-
         {/* Title */}
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
