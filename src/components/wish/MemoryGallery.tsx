@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeConfig, WishMedia } from "@/lib/types";
 import Image from "next/image";
@@ -11,184 +11,238 @@ interface MemoryGalleryProps {
   onNext: () => void;
 }
 
+// Ken Burns effect presets — each image gets a different slow zoom/pan
+const kenBurnsVariants = [
+  { scale: [1, 1.15], x: ["0%", "2%"], y: ["0%", "-2%"] },
+  { scale: [1.05, 1.18], x: ["0%", "-3%"], y: ["0%", "1%"] },
+  { scale: [1, 1.12], x: ["0%", "-2%"], y: ["-1%", "2%"] },
+  { scale: [1.08, 1.2], x: ["1%", "-1%"], y: ["0%", "-3%"] },
+  { scale: [1, 1.14], x: ["-1%", "2%"], y: ["0%", "-1%"] },
+];
+
+const AUTO_ADVANCE_MS = 4500;
+
 export default function MemoryGallery({
   images,
   theme,
   onNext,
 }: MemoryGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [direction, setDirection] = useState(0);
+  const [showTitle, setShowTitle] = useState(true);
+  const [progressKey, setProgressKey] = useState(0);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const navigate = (newIndex: number) => {
-    setDirection(newIndex > currentIndex ? 1 : -1);
-    setCurrentIndex(newIndex);
-  };
+  // Hide title after 2 seconds
+  useEffect(() => {
+    const t = setTimeout(() => setShowTitle(false), 2000);
+    return () => clearTimeout(t);
+  }, []);
 
-  const goNext = () => {
-    if (currentIndex < images.length - 1) {
-      navigate(currentIndex + 1);
-    }
-  };
+  // Reset loaded state when image changes
+  useEffect(() => {
+    setImageLoaded(false);
+  }, [currentIndex]);
 
-  const goPrev = () => {
-    if (currentIndex > 0) {
-      navigate(currentIndex - 1);
-    }
-  };
+  // Auto-advance only AFTER image has loaded
+  useEffect(() => {
+    if (!imageLoaded) return;
+    timerRef.current = setTimeout(() => {
+      if (currentIndex < images.length - 1) {
+        setCurrentIndex((prev) => prev + 1);
+        setProgressKey((prev) => prev + 1);
+      } else {
+        setTimeout(() => onNext(), 2000);
+      }
+    }, AUTO_ADVANCE_MS);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [imageLoaded, currentIndex, images.length, onNext]);
 
-  const slideVariants = {
-    enter: (direction: number) => ({
-      x: direction > 0 ? 300 : -300,
-      opacity: 0,
-      scale: 0.9,
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-      scale: 1,
+  const goToIndex = useCallback(
+    (idx: number) => {
+      if (idx >= 0 && idx < images.length) {
+        setCurrentIndex(idx);
+        setProgressKey((prev) => prev + 1);
+      }
     },
-    exit: (direction: number) => ({
-      x: direction > 0 ? -300 : 300,
-      opacity: 0,
-      scale: 0.9,
-    }),
-  };
+    [images.length],
+  );
 
-  if (images.length === 0) {
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="min-h-screen flex flex-col items-center justify-center p-6"
-      >
-        <p className="text-lg" style={{ color: theme.colors.textMuted }}>
-          No memories to show
-        </p>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={onNext}
-          className="mt-6 px-8 py-3 rounded-full font-medium text-lg"
-          style={{
-            background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`,
-            color: theme.colors.text,
-          }}
-        >
-          Continue →
-        </motion.button>
-      </motion.div>
-    );
-  }
+  // Handle swipe
+  const handleDragEnd = useCallback(
+    (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
+      const threshold = 50;
+      if (info.offset.x < -threshold || info.velocity.x < -500) {
+        if (currentIndex < images.length - 1) goToIndex(currentIndex + 1);
+      } else if (info.offset.x > threshold || info.velocity.x > 500) {
+        if (currentIndex > 0) goToIndex(currentIndex - 1);
+      }
+    },
+    [currentIndex, images.length, goToIndex],
+  );
+
+  // Handle tap on left/right half
+  const handleTap = useCallback(
+    (e: React.MouseEvent) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      if (x < rect.width / 3) {
+        if (currentIndex > 0) goToIndex(currentIndex - 1);
+      } else if (x > (rect.width * 2) / 3) {
+        if (currentIndex < images.length - 1) goToIndex(currentIndex + 1);
+      }
+    },
+    [currentIndex, images.length, goToIndex],
+  );
+
+  const kb = kenBurnsVariants[currentIndex % kenBurnsVariants.length];
+
+  if (images.length === 0) return null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="min-h-screen flex flex-col items-center justify-center p-4 md:p-6 relative"
+    <div
+      className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden"
     >
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-6"
+      {/* Full-bleed image with Ken Burns */}
+      <div
+        className="absolute inset-0 cursor-pointer"
+        onClick={handleTap}
       >
-        <h2
-          className="text-2xl md:text-3xl font-bold mb-2"
-          style={{ color: theme.colors.text, fontFamily: theme.font }}
-        >
-          📸 Memory Lane
-        </h2>
-        <p className="text-sm" style={{ color: theme.colors.textMuted }}>
-          {currentIndex + 1} of {images.length}
-        </p>
-      </motion.div>
-
-      {/* Image carousel */}
-      <div className="relative w-full max-w-lg mx-auto aspect-[3/4] md:aspect-[4/3] rounded-2xl overflow-hidden">
-        <AnimatePresence initial={false} custom={direction} mode="wait">
+        <AnimatePresence mode="sync">
           <motion.div
             key={currentIndex}
-            custom={direction}
-            variants={slideVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
             className="absolute inset-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1, ease: "easeInOut" }}
           >
-            <Image
-              src={images[currentIndex].file_url}
-              alt={`Memory ${currentIndex + 1}`}
-              fill
-              className="object-cover rounded-2xl"
-              priority
-            />
-            {/* Gradient overlay at bottom */}
-            <div
-              className="absolute inset-x-0 bottom-0 h-24"
-              style={{
-                background: `linear-gradient(transparent, ${theme.colors.background})`,
+            <motion.div
+              className="absolute inset-0"
+              animate={{
+                scale: kb.scale,
+                x: kb.x,
+                y: kb.y,
               }}
-            />
+              transition={{
+                duration: AUTO_ADVANCE_MS / 1000 + 1,
+                ease: "linear",
+              }}
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.15}
+              onDragEnd={handleDragEnd}
+            >
+              <Image
+                src={images[currentIndex].file_url}
+                alt={`Memory ${currentIndex + 1}`}
+                fill
+                className="object-cover"
+                priority
+                onLoad={() => setImageLoaded(true)}
+              />
+            </motion.div>
           </motion.div>
         </AnimatePresence>
 
-        {/* Navigation arrows */}
-        {currentIndex > 0 && (
-          <button
-            onClick={goPrev}
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/60 transition-colors z-10"
-          >
-            ←
-          </button>
-        )}
-        {currentIndex < images.length - 1 && (
-          <button
-            onClick={goNext}
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/60 transition-colors z-10"
-          >
-            →
-          </button>
-        )}
+        {/* Cinematic vignette overlay */}
+        <div
+          className="absolute inset-0 pointer-events-none z-10"
+          style={{
+            background: `radial-gradient(ellipse at center, transparent 35%, ${theme.colors.background}CC 75%, ${theme.colors.background} 100%)`,
+          }}
+        />
+
+        {/* Bottom letterbox gradient */}
+        <div
+          className="absolute inset-x-0 bottom-0 h-48 pointer-events-none z-10"
+          style={{
+            background: `linear-gradient(transparent, ${theme.colors.background}EE)`,
+          }}
+        />
+
+        {/* Top letterbox gradient */}
+        <div
+          className="absolute inset-x-0 top-0 h-32 pointer-events-none z-10"
+          style={{
+            background: `linear-gradient(${theme.colors.background}AA, transparent)`,
+          }}
+        />
       </div>
 
-      {/* Dots */}
-      <div className="flex gap-2 mt-4">
+      {/* Title overlay — fades out */}
+      <AnimatePresence>
+        {showTitle && (
+          <motion.div
+            initial={{ opacity: 0, filter: "blur(8px)" }}
+            animate={{ opacity: 1, filter: "blur(0px)" }}
+            exit={{ opacity: 0, filter: "blur(4px)" }}
+            transition={{ duration: 0.8 }}
+            className="absolute inset-0 z-20 flex items-center justify-center"
+          >
+            <h2
+              className="text-3xl md:text-5xl font-bold"
+              style={{
+                color: theme.colors.text,
+                fontFamily: theme.font,
+                textShadow: `0 0 40px ${theme.colors.background}, 0 2px 10px ${theme.colors.background}`,
+              }}
+            >
+              Our Moments
+            </h2>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Image counter pill */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.8 }}
+        transition={{ delay: 2.2 }}
+        className="absolute top-6 right-6 z-20 px-3 py-1 rounded-full text-xs"
+        style={{
+          backgroundColor: `${theme.colors.surface}CC`,
+          color: theme.colors.text,
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        {currentIndex + 1} / {images.length}
+      </motion.div>
+
+      {/* Progress bar — only starts after image loads */}
+      <div className="absolute bottom-0 left-0 right-0 z-20 h-0.5">
+        <motion.div
+          key={progressKey}
+          className="h-full"
+          style={{ backgroundColor: theme.colors.primary }}
+          initial={{ width: "0%" }}
+          animate={{ width: imageLoaded ? "100%" : "0%" }}
+          transition={{ duration: imageLoaded ? AUTO_ADVANCE_MS / 1000 : 0, ease: "linear" }}
+        />
+      </div>
+
+      {/* Dot indicators */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
         {images.map((_, i) => (
           <button
             key={i}
-            onClick={() => navigate(i)}
-            className="w-2 h-2 rounded-full transition-all duration-300"
+            onClick={(e) => {
+              e.stopPropagation();
+              goToIndex(i);
+            }}
+            className="w-1.5 h-1.5 rounded-full transition-all duration-300"
             style={{
               backgroundColor:
                 i === currentIndex
                   ? theme.colors.primary
-                  : `${theme.colors.text}30`,
-              transform: i === currentIndex ? "scale(1.5)" : "scale(1)",
+                  : `${theme.colors.text}40`,
+              transform: i === currentIndex ? "scale(1.8)" : "scale(1)",
             }}
           />
         ))}
       </div>
-
-      {/* Continue button */}
-      <motion.button
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={onNext}
-        className="mt-8 px-8 py-3 rounded-full font-medium text-lg"
-        style={{
-          background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`,
-          color: theme.colors.text,
-          boxShadow: `0 8px 30px ${theme.colors.primary}30`,
-        }}
-      >
-        See the Message →
-      </motion.button>
-    </motion.div>
+    </div>
   );
 }

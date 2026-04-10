@@ -59,7 +59,13 @@ function FireworksScene({ colors }: { colors: string[] }) {
   const pointsRef = useRef<THREE.Points>(null);
   const trailPointsRef = useRef<THREE.Points>(null);
   const timerRef = useRef(0);
-  const { size } = useThree();
+  const { size, scene, gl } = useThree();
+
+  // Ensure transparent background
+  useEffect(() => {
+    scene.background = null;
+    gl.setClearColor(0x000000, 0);
+  }, [scene, gl]);
 
   const MAX_PARTICLES = 2000;
   const MAX_TRAILS = 100;

@@ -1,17 +1,20 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { Wish, WishMedia, ThemeConfig } from "@/lib/types";
 import { THEMES } from "@/lib/constants";
 import IntroScreen from "./IntroScreen";
 import NameReveal from "./NameReveal";
+import CountdownSection from "./CountdownSection";
 import MemoryGallery from "./MemoryGallery";
 import MessageReveal from "./MessageReveal";
+import LoveAffirmations from "./LoveAffirmations";
+import HeartFill from "./HeartFill";
+import DinoSection from "./DinoSection";
 import CelebrationScreen from "./CelebrationScreen";
 import BirthdayCake from "./BirthdayCake";
-import FloatingBalloons from "./FloatingBalloons";
 import BackgroundMusic from "./BackgroundMusic";
 
 // Lazy load Three.js components
@@ -25,13 +28,13 @@ interface WishExperienceProps {
 }
 
 /**
- * Single-page vertical scroll wish experience.
+ * Cinematic single-page vertical scroll wish experience.
+ * Flow: Intro → Name → Countdown → Gallery → Message → Affirmations → Hearts → Lanterns → Celebration
  */
 export default function WishExperience({ wish }: WishExperienceProps) {
   const theme: ThemeConfig = THEMES[wish.theme] || THEMES.cartoon;
   const [started, setStarted] = useState(false);
   const [unlockedSections, setUnlockedSections] = useState(1);
-  const [balloonsFlyAway, setBalloonsFlyAway] = useState(false);
 
   const images = (wish.wish_media || [])
     .filter((m: WishMedia) => m.type === "image")
@@ -41,11 +44,13 @@ export default function WishExperience({ wish }: WishExperienceProps) {
     (m: WishMedia) => m.type === "audio",
   );
 
-  // Build list of sections to show
+  // Build list of sections — new sections added to the flow
   const sections: string[] = ["intro", "name"];
+  if (wish.special_date) sections.push("countdown");
+  sections.push("dino");
   if (images.length > 0) sections.push("gallery");
   if (wish.message?.trim()) sections.push("message");
-  sections.push("cake", "celebration");
+  sections.push("affirmations", "hearts", "lanterns", "celebration");
 
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -66,18 +71,12 @@ export default function WishExperience({ wish }: WishExperienceProps) {
 
   const handleIntroNext = useCallback(() => {
     setStarted(true);
-    setBalloonsFlyAway(true); // Fly away after intro (first screen only)
-    unlockNext();
-  }, [unlockNext]);
-
-  const handleCakeNext = useCallback(() => {
     unlockNext();
   }, [unlockNext]);
 
   const handleReplay = useCallback(() => {
     setUnlockedSections(1);
     setStarted(false);
-    setBalloonsFlyAway(false);
     scrollToSection(0);
   }, [scrollToSection]);
 
@@ -97,9 +96,6 @@ export default function WishExperience({ wish }: WishExperienceProps) {
         src={audio ? audio.file_url : "/music.mp3"}
         play={started}
       />
-
-      {/* Balloons — visible during intro (first screen), then fly away */}
-      <FloatingBalloons theme={theme} count={6} flyAway={balloonsFlyAway} />
 
       {/* === SECTIONS === */}
       {sections.map((section, idx) => {
@@ -122,42 +118,69 @@ export default function WishExperience({ wish }: WishExperienceProps) {
             )}
 
             {section === "name" && (
-              <ScrollSection theme={theme}>
-                <NameReveal
-                  personName={wish.person_name}
-                  title={wish.title}
-                  specialDate={wish.special_date}
-                  theme={theme}
-                  onNext={unlockNext}
-                />
-              </ScrollSection>
+              <NameReveal
+                personName={wish.person_name}
+                title={wish.title}
+                specialDate={wish.special_date}
+                theme={theme}
+                onNext={unlockNext}
+              />
+            )}
+
+            {section === "countdown" && (
+              <CountdownSection
+                personName={wish.person_name}
+                specialDate={wish.special_date!}
+                theme={theme}
+                onNext={unlockNext}
+              />
+            )}
+
+            {section === "dino" && (
+              <DinoSection
+                personName={wish.person_name}
+                theme={theme}
+                onNext={unlockNext}
+              />
             )}
 
             {section === "gallery" && (
-              <ScrollSection theme={theme}>
-                <MemoryGallery
-                  images={images}
-                  theme={theme}
-                  onNext={unlockNext}
-                />
-              </ScrollSection>
+              <MemoryGallery
+                images={images}
+                theme={theme}
+                onNext={unlockNext}
+              />
             )}
 
             {section === "message" && (
-              <ScrollSection theme={theme}>
-                <MessageReveal
-                  message={wish.message}
-                  theme={theme}
-                  onNext={unlockNext}
-                />
-              </ScrollSection>
+              <MessageReveal
+                message={wish.message}
+                theme={theme}
+                onNext={unlockNext}
+              />
             )}
 
-            {section === "cake" && (
-              <CakeSection
+            {section === "affirmations" && (
+              <LoveAffirmations
                 personName={wish.person_name}
                 theme={theme}
-                onNext={handleCakeNext}
+                onNext={unlockNext}
+              />
+            )}
+
+            {section === "hearts" && (
+              <HeartFill
+                personName={wish.person_name}
+                theme={theme}
+                onNext={unlockNext}
+              />
+            )}
+
+            {section === "lanterns" && (
+              <LanternSection
+                personName={wish.person_name}
+                theme={theme}
+                onNext={unlockNext}
               />
             )}
 
@@ -175,43 +198,8 @@ export default function WishExperience({ wish }: WishExperienceProps) {
   );
 }
 
-/* Wrapper for sections that animate in when scrolled into view */
-function ScrollSection({
-  children,
-  theme,
-}: {
-  children: React.ReactNode;
-  theme: ThemeConfig;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, amount: 0.2 });
-
-  return (
-    <div ref={ref} className="min-h-screen relative">
-      <motion.div
-        initial={{ opacity: 0, y: 60 }}
-        animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 60 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className="min-h-screen"
-        style={{ backgroundColor: "transparent" }}
-      >
-        {children}
-      </motion.div>
-      {/* Gradient divider between sections */}
-      <div
-        className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
-        style={{
-          background: `linear-gradient(to bottom, transparent, ${theme.colors.background}40)`,
-        }}
-      />
-    </div>
-  );
-}
-
-/* Cake section — doesn't need ScrollSection wrapper, has its own layout */
-import { motion as m } from "framer-motion";
-
-function CakeSection({
+/* Lantern section — wish lanterns interactive moment */
+function LanternSection({
   personName,
   theme,
   onNext,
@@ -220,49 +208,36 @@ function CakeSection({
   theme: ThemeConfig;
   onNext: () => void;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, amount: 0.3 });
-
   return (
-    <div ref={ref} className="min-h-screen relative">
-      <m.div
-        initial={{ opacity: 0, y: 60 }}
-        animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 60 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden"
-      >
+    <div className="min-h-screen relative">
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden">
         {/* Background glow */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <m.div
+          <motion.div
             className="absolute top-1/3 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full blur-3xl"
-            style={{ backgroundColor: `${theme.colors.primary}10` }}
-            animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
-            transition={{ duration: 4, repeat: Infinity }}
+            style={{ backgroundColor: `${theme.colors.primary}15` }}
+            animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.4, 0.2] }}
+            transition={{ duration: 5, repeat: Infinity }}
           />
         </div>
 
         {/* Title */}
-        <m.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ delay: 0.3 }}
-          className="text-center mb-8 relative z-10"
-        >
+        <div className="text-center mb-8 relative z-10">
           <h2
             className="text-2xl md:text-4xl font-bold mb-2"
             style={{ color: theme.colors.text, fontFamily: theme.font }}
           >
-            🎂 Time to blow the candles!
+            Release your wishes into the sky
           </h2>
           <p
             className="text-sm md:text-base"
             style={{ color: theme.colors.textMuted }}
           >
-            A special cake for {personName}
+            Tap each lantern to set it free, {personName}
           </p>
-        </m.div>
+        </div>
 
-        {/* Interactive Cake */}
+        {/* Interactive Lanterns */}
         <div className="relative z-10">
           <BirthdayCake
             personName={personName}
@@ -270,7 +245,7 @@ function CakeSection({
             onAllCandlesBlown={onNext}
           />
         </div>
-      </m.div>
+      </div>
     </div>
   );
 }

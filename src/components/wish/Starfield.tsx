@@ -6,7 +6,7 @@ import * as THREE from "three";
 
 function Stars() {
   const starsRef = useRef<THREE.Points>(null);
-  const COUNT = 600;
+  const COUNT = 350;
 
   const { positions, colors, sizes } = useMemo(() => {
     const pos = new Float32Array(COUNT * 3);
@@ -15,32 +15,35 @@ function Stars() {
 
     for (let i = 0; i < COUNT; i++) {
       const i3 = i * 3;
-      pos[i3] = (Math.random() - 0.5) * 40;
-      pos[i3 + 1] = (Math.random() - 0.5) * 40;
-      pos[i3 + 2] = (Math.random() - 0.5) * 20 - 5;
+      pos[i3] = (Math.random() - 0.5) * 50;
+      pos[i3 + 1] = (Math.random() - 0.5) * 50;
+      pos[i3 + 2] = (Math.random() - 0.5) * 30 - 10;
 
-      // Warm twinkling colors
+      // Subtle warm/cool star colors
       const t = Math.random();
       if (t < 0.3) {
+        // Warm golden
         col[i3] = 1;
-        col[i3 + 1] = 0.85;
-        col[i3 + 2] = 0.6;
-      } else if (t < 0.6) {
-        col[i3] = 0.8;
-        col[i3 + 1] = 0.7;
+        col[i3 + 1] = 0.9;
+        col[i3 + 2] = 0.7;
+      } else if (t < 0.5) {
+        // Cool blue
+        col[i3] = 0.75;
+        col[i3 + 1] = 0.8;
         col[i3 + 2] = 1;
       } else {
+        // White
         col[i3] = 1;
         col[i3 + 1] = 1;
         col[i3 + 2] = 1;
       }
 
-      sz[i] = 1 + Math.random() * 3;
+      // Much smaller stars — most are tiny, a few slightly bigger
+      sz[i] = 0.3 + Math.random() * 1.2;
     }
     return { positions: pos, colors: col, sizes: sz };
   }, []);
 
-  // Pre-store random phases for twinkling
   const phases = useMemo(() => {
     const p = new Float32Array(COUNT);
     for (let i = 0; i < COUNT; i++) p[i] = Math.random() * Math.PI * 2;
@@ -54,19 +57,17 @@ function Stars() {
     const arr = sizeAttr.array as Float32Array;
 
     for (let i = 0; i < COUNT; i++) {
-      // Twinkle effect
       arr[i] =
         sizes[i] *
-        (0.5 + 0.5 * Math.sin(time * (0.5 + phases[i] * 0.3) + phases[i]));
+        (0.6 + 0.4 * Math.sin(time * (0.3 + phases[i] * 0.2) + phases[i]));
     }
     sizeAttr.needsUpdate = true;
 
-    // Slow rotation
-    starsRef.current.rotation.y = time * 0.02;
-    starsRef.current.rotation.x = Math.sin(time * 0.01) * 0.05;
+    // Very slow rotation
+    starsRef.current.rotation.y = time * 0.008;
+    starsRef.current.rotation.x = Math.sin(time * 0.005) * 0.03;
   });
 
-  // Circular texture
   const texture = useMemo(() => {
     const size = 32;
     const canvas = document.createElement("canvas");
@@ -82,7 +83,8 @@ function Stars() {
       size / 2,
     );
     grad.addColorStop(0, "rgba(255,255,255,1)");
-    grad.addColorStop(0.3, "rgba(255,255,255,0.6)");
+    grad.addColorStop(0.2, "rgba(255,255,255,0.5)");
+    grad.addColorStop(0.5, "rgba(255,255,255,0.1)");
     grad.addColorStop(1, "rgba(255,255,255,0)");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, size, size);
@@ -102,7 +104,7 @@ function Stars() {
         map={texture}
         vertexColors
         transparent
-        opacity={0.9}
+        opacity={0.6}
         sizeAttenuation
         blending={THREE.AdditiveBlending}
         depthWrite={false}
@@ -115,11 +117,11 @@ export default function Starfield() {
   return (
     <div className="fixed inset-0 pointer-events-none z-0">
       <Canvas
-        camera={{ position: [0, 0, 10], fov: 60 }}
+        camera={{ position: [0, 0, 15], fov: 55 }}
         style={{ background: "transparent" }}
         gl={{ alpha: true, antialias: false }}
       >
-        {/* <Stars /> */}
+        <Stars />
       </Canvas>
     </div>
   );

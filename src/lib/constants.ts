@@ -68,9 +68,9 @@ export const THEMES: Record<ThemeKey, ThemeConfig> = {
 };
 
 export const FILE_LIMITS = {
-  IMAGE_MAX_SIZE: 10 * 1024 * 1024, // 10MB
+  IMAGE_MAX_SIZE: 20 * 1024 * 1024, // 20MB
   AUDIO_MAX_SIZE: 10 * 1024 * 1024, // 10MB
-  MAX_IMAGES: 10,
+  MAX_IMAGES: 20,
 };
 
 export const ALLOWED_IMAGE_FORMATS = ["image/jpeg", "image/png", "image/webp"];
