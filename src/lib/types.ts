@@ -52,3 +52,7 @@ export interface UploadedFile {
   preview: string;
   id: string;
 }
+
+export type MediaItem =
+  | { kind: "existing"; id: string; mediaId: string; url: string }
+  | { kind: "new"; id: string; file: File; preview: string };

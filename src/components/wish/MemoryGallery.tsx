@@ -31,6 +31,7 @@ export default function MemoryGallery({
   const [showTitle, setShowTitle] = useState(true);
   const [progressKey, setProgressKey] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [showContinue, setShowContinue] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Hide title after 2 seconds
@@ -39,26 +40,31 @@ export default function MemoryGallery({
     return () => clearTimeout(t);
   }, []);
 
-  // Reset loaded state when image changes
+  // Reset loaded/continue state when image changes
   useEffect(() => {
     setImageLoaded(false);
+    setShowContinue(false);
   }, [currentIndex]);
 
-  // Auto-advance only AFTER image has loaded
+  // Auto-advance through images, but stop on last and wait for tap
   useEffect(() => {
     if (!imageLoaded) return;
+
+    const isLastImage = currentIndex >= images.length - 1;
+
     timerRef.current = setTimeout(() => {
-      if (currentIndex < images.length - 1) {
+      if (!isLastImage) {
         setCurrentIndex((prev) => prev + 1);
         setProgressKey((prev) => prev + 1);
       } else {
-        setTimeout(() => onNext(), 2000);
+        setShowContinue(true);
       }
     }, AUTO_ADVANCE_MS);
+
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [imageLoaded, currentIndex, images.length, onNext]);
+  }, [imageLoaded, currentIndex, images.length]);
 
   const goToIndex = useCallback(
     (idx: number) => {
@@ -76,16 +82,22 @@ export default function MemoryGallery({
       const threshold = 50;
       if (info.offset.x < -threshold || info.velocity.x < -500) {
         if (currentIndex < images.length - 1) goToIndex(currentIndex + 1);
+        else if (showContinue) onNext();
       } else if (info.offset.x > threshold || info.velocity.x > 500) {
         if (currentIndex > 0) goToIndex(currentIndex - 1);
       }
     },
-    [currentIndex, images.length, goToIndex],
+    [currentIndex, images.length, goToIndex, showContinue, onNext],
   );
 
   // Handle tap on left/right half
   const handleTap = useCallback(
     (e: React.MouseEvent) => {
+      // Once last image is ready, any tap continues to next section
+      if (showContinue) {
+        onNext();
+        return;
+      }
       const rect = e.currentTarget.getBoundingClientRect();
       const x = e.clientX - rect.left;
       if (x < rect.width / 3) {
@@ -94,7 +106,7 @@ export default function MemoryGallery({
         if (currentIndex < images.length - 1) goToIndex(currentIndex + 1);
       }
     },
-    [currentIndex, images.length, goToIndex],
+    [currentIndex, images.length, goToIndex, showContinue, onNext],
   );
 
   const kb = kenBurnsVariants[currentIndex % kenBurnsVariants.length];
@@ -119,6 +131,18 @@ export default function MemoryGallery({
             exit={{ opacity: 0 }}
             transition={{ duration: 1, ease: "easeInOut" }}
           >
+            {/* Blurred ambient backdrop — fills screen so letterbox isn't harsh */}
+            <div className="absolute inset-0 scale-110">
+              <Image
+                src={images[currentIndex].file_url}
+                alt=""
+                fill
+                className="object-cover blur-2xl opacity-50"
+                priority
+                aria-hidden
+              />
+            </div>
+
             <motion.div
               className="absolute inset-0"
               animate={{
@@ -139,7 +163,7 @@ export default function MemoryGallery({
                 src={images[currentIndex].file_url}
                 alt={`Memory ${currentIndex + 1}`}
                 fill
-                className="object-cover"
+                className="object-contain"
                 priority
                 onLoad={() => setImageLoaded(true)}
               />
@@ -222,6 +246,22 @@ export default function MemoryGallery({
           transition={{ duration: imageLoaded ? AUTO_ADVANCE_MS / 1000 : 0, ease: "linear" }}
         />
       </div>
+
+      {/* Tap to continue prompt — appears after last image */}
+      <AnimatePresence>
+        {showContinue && (
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 0.7, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6 }}
+            className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 text-xs animate-pulse whitespace-nowrap"
+            style={{ color: theme.colors.text }}
+          >
+            tap to continue
+          </motion.p>
+        )}
+      </AnimatePresence>
 
       {/* Dot indicators */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">

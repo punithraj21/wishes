@@ -17,7 +17,10 @@ function calculateAge(dateStr: string): number {
   let age = today.getFullYear() - birthday.getFullYear();
   const monthDiff = today.getMonth() - birthday.getMonth();
   // If birthday hasn't happened yet this year, they're turning this age
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthday.getDate())) {
+  if (
+    monthDiff < 0 ||
+    (monthDiff === 0 && today.getDate() < birthday.getDate())
+  ) {
     // Birthday is upcoming — they're turning `age`
     return age;
   }
@@ -31,20 +34,28 @@ export default function CountdownSection({
   theme,
   onNext,
 }: CountdownSectionProps) {
-  const [mounted, setMounted] = useState(false);
-  const [numberVisible, setNumberVisible] = useState(false);
-
   const age = calculateAge(specialDate);
+  const [mounted, setMounted] = useState(false);
+  const [count, setCount] = useState(age > 1 ? 1 : age);
+  const [finished, setFinished] = useState(age <= 1);
 
   useEffect(() => {
-    setMounted(true);
-    const t1 = setTimeout(() => setNumberVisible(true), 800);
-    const t2 = setTimeout(() => onNext(), 6000);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
-  }, [onNext]);
+    requestAnimationFrame(() => setMounted(true));
+  }, []);
+
+  // Tick fast up to (age - 3), then slow down for the last few
+  useEffect(() => {
+    if (!mounted) return;
+    if (count >= age) {
+      setFinished(true);
+      return;
+    }
+    const remaining = age - count;
+    const delay =
+      remaining > 3 ? 55 : remaining === 3 ? 400 : remaining === 2 ? 700 : 1000;
+    const t = setTimeout(() => setCount((c) => c + 1), delay);
+    return () => clearTimeout(t);
+  }, [count, age, mounted]);
 
   return (
     <div
@@ -88,21 +99,21 @@ export default function CountdownSection({
       {/* The big age number */}
       <div className="relative">
         <motion.span
-          className="text-[120px] md:text-[160px] font-bold leading-none block"
+          className="text-[120px] md:text-[160px] font-bold leading-none block tabular-nums"
           style={{
             color: theme.colors.text,
             fontFamily: theme.font,
             textShadow: `0 0 60px ${theme.colors.primary}40, 0 0 120px ${theme.colors.primary}20`,
-            opacity: numberVisible ? 1 : 0,
-            transform: numberVisible ? "scale(1)" : "scale(0.5)",
-            transition: "all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)",
+            opacity: mounted ? 1 : 0,
+            transform: mounted ? "scale(1)" : "scale(0.5)",
+            transition: "opacity 0.5s ease, transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
           }}
         >
-          {age}
+          {count}
         </motion.span>
 
-        {/* Shimmer sweep across the number */}
-        {numberVisible && (
+        {/* Shimmer sweep — fires once when counter lands */}
+        {finished && (
           <motion.div
             className="absolute inset-0 pointer-events-none"
             style={{
@@ -111,7 +122,7 @@ export default function CountdownSection({
             }}
             initial={{ x: "-120%" }}
             animate={{ x: "220%" }}
-            transition={{ delay: 0.8, duration: 1, ease: "easeInOut" }}
+            transition={{ duration: 1, ease: "easeInOut" }}
           />
         )}
       </div>
@@ -122,9 +133,9 @@ export default function CountdownSection({
         style={{
           color: theme.colors.accent,
           fontFamily: theme.font,
-          opacity: numberVisible ? 0.8 : 0,
-          transform: numberVisible ? "translateY(0)" : "translateY(10px)",
-          transitionDelay: "0.6s",
+          opacity: finished ? 0.8 : 0,
+          transform: finished ? "translateY(0)" : "translateY(10px)",
+          transitionDelay: "0.2s",
         }}
       >
         and absolutely fabulous
@@ -135,15 +146,15 @@ export default function CountdownSection({
         className="mt-6 text-sm tracking-widest uppercase transition-all duration-700"
         style={{
           color: theme.colors.textMuted,
-          opacity: numberVisible ? 0.5 : 0,
-          transitionDelay: "1s",
+          opacity: finished ? 0.5 : 0,
+          transitionDelay: "0.5s",
         }}
       >
-        Happy Birthday, {personName}
+        Happy Birthday to my Best frnd, {personName}
       </p>
 
       {/* Decorative sparkles */}
-      {numberVisible &&
+      {finished &&
         [
           { x: -80, y: -60, delay: 1.2 },
           { x: 90, y: -40, delay: 1.5 },

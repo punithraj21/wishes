@@ -30,9 +30,7 @@ export default function DinoSection({
 
   useEffect(() => {
     setMounted(true);
-    const timer = setTimeout(() => onNext(), 5000);
-    return () => clearTimeout(timer);
-  }, [onNext]);
+  }, []);
 
   return (
     <div

@@ -103,6 +103,23 @@ create policy "Authenticated users can insert wish_media"
     )
   );
 
+-- Wish Media: only wish owner can update (e.g. reordering via order_index)
+create policy "Users can update own wish_media"
+  on public.wish_media for update
+  to authenticated
+  using (
+    exists (
+      select 1 from public.wishes
+      where id = wish_id and created_by = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.wishes
+      where id = wish_id and created_by = auth.uid()
+    )
+  );
+
 -- Wish Media: only wish owner can delete
 create policy "Users can delete own wish_media"
   on public.wish_media for delete

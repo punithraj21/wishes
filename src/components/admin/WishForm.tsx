@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ThemeKey, UploadedFile, Wish } from "@/lib/types";
+import { MediaItem, ThemeKey, Wish } from "@/lib/types";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import RichTextEditor from "./RichTextEditor";
@@ -31,15 +31,21 @@ interface WishFormProps {
 export default function WishForm({ mode, initialData }: WishFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [imageFiles, setImageFiles] = useState<UploadedFile[]>([]);
+  const [items, setItems] = useState<MediaItem[]>(() => {
+    if (!initialData?.wish_media) return [];
+    return initialData.wish_media
+      .filter((m) => m.type === "image")
+      .sort((a, b) => a.order_index - b.order_index)
+      .map((m) => ({
+        kind: "existing" as const,
+        id: m.id,
+        mediaId: m.id,
+        url: m.file_url,
+      }));
+  });
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [message, setMessage] = useState(initialData?.message || "");
   const [theme, setTheme] = useState<ThemeKey>(initialData?.theme || "cartoon");
-  const [existingImages, setExistingImages] = useState<string[]>(
-    initialData?.wish_media
-      ?.filter((m) => m.type === "image")
-      .map((m) => m.file_url) || [],
-  );
   const [existingAudio] = useState<string | null>(
     initialData?.wish_media?.find((m) => m.type === "audio")?.file_url || null,
   );
@@ -58,61 +64,87 @@ export default function WishForm({ mode, initialData }: WishFormProps) {
     },
   });
 
-  const uploadFiles = async (wishId: string) => {
+  const persistMedia = async (wishId: string) => {
     const supabase = createClient();
-    const mediaRecords: {
-      wish_id: string;
-      type: string;
-      file_url: string;
-      order_index: number;
-    }[] = [];
 
-    // Upload new images
-    for (let i = 0; i < imageFiles.length; i++) {
-      const file = imageFiles[i].file;
-      const ext = file.name.split(".").pop();
-      const path = `${wishId}/images/${Date.now()}-${i}.${ext}`;
-
-      const { error } = await supabase.storage
-        .from("wishes")
-        .upload(path, file);
-      if (error) throw error;
-
-      const { data: urlData } = supabase.storage
-        .from("wishes")
-        .getPublicUrl(path);
-      mediaRecords.push({
-        wish_id: wishId,
-        type: "image",
-        file_url: urlData.publicUrl,
-        order_index: existingImages.length + i,
-      });
+    // Delete existing media records that were removed from items (edit mode)
+    if (mode === "edit" && initialData?.wish_media) {
+      const remainingMediaIds = items
+        .filter((i) => i.kind === "existing")
+        .map((i) => (i.kind === "existing" ? i.mediaId : ""));
+      const removed = initialData.wish_media.filter(
+        (m) => m.type === "image" && !remainingMediaIds.includes(m.id),
+      );
+      for (const media of removed) {
+        const { error } = await supabase
+          .from("wish_media")
+          .delete()
+          .eq("id", media.id);
+        if (error) throw error;
+      }
     }
 
-    // Upload audio
+    // Process items in their current order — order_index = position
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind === "existing") {
+        const { error } = await supabase
+          .from("wish_media")
+          .update({ order_index: i })
+          .eq("id", item.mediaId);
+        if (error) throw error;
+      } else {
+        const ext = item.file.name.split(".").pop();
+        const path = `${wishId}/images/${Date.now()}-${i}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("wishes")
+          .upload(path, item.file);
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from("wishes")
+          .getPublicUrl(path);
+        const { error: insertError } = await supabase
+          .from("wish_media")
+          .insert({
+            wish_id: wishId,
+            type: "image",
+            file_url: urlData.publicUrl,
+            order_index: i,
+          });
+        if (insertError) throw insertError;
+      }
+    }
+
+    // Audio: removed existing
+    if (removedExistingAudio && initialData?.wish_media) {
+      const audioMedia = initialData.wish_media.find(
+        (m) => m.type === "audio",
+      );
+      if (audioMedia) {
+        await supabase.from("wish_media").delete().eq("id", audioMedia.id);
+      }
+    }
+
+    // Audio: new upload
     if (audioFile) {
       const ext = audioFile.name.split(".").pop();
       const path = `${wishId}/audio/${Date.now()}.${ext}`;
-
-      const { error } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("wishes")
         .upload(path, audioFile);
-      if (error) throw error;
+      if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage
         .from("wishes")
         .getPublicUrl(path);
-      mediaRecords.push({
+      const { error: insertError } = await supabase.from("wish_media").insert({
         wish_id: wishId,
         type: "audio",
         file_url: urlData.publicUrl,
         order_index: 0,
       });
-    }
-
-    if (mediaRecords.length > 0) {
-      const { error } = await supabase.from("wish_media").insert(mediaRecords);
-      if (error) throw error;
+      if (insertError) throw insertError;
     }
   };
 
@@ -124,6 +156,8 @@ export default function WishForm({ mode, initialData }: WishFormProps) {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
+
+      let wishId: string;
 
       if (mode === "create") {
         const slug = generateSlug(data.person_name);
@@ -140,9 +174,8 @@ export default function WishForm({ mode, initialData }: WishFormProps) {
           })
           .select()
           .single();
-
         if (error) throw error;
-        await uploadFiles(wish.id);
+        wishId = wish.id;
       } else if (initialData) {
         const { error } = await supabase
           .from("wishes")
@@ -154,31 +187,13 @@ export default function WishForm({ mode, initialData }: WishFormProps) {
             theme,
           })
           .eq("id", initialData.id);
-
         if (error) throw error;
-
-        // Handle removed existing images
-        if (initialData.wish_media) {
-          const removedImages = initialData.wish_media.filter(
-            (m) => m.type === "image" && !existingImages.includes(m.file_url),
-          );
-          for (const media of removedImages) {
-            await supabase.from("wish_media").delete().eq("id", media.id);
-          }
-        }
-
-        // Handle removed audio
-        if (removedExistingAudio && initialData.wish_media) {
-          const audioMedia = initialData.wish_media.find(
-            (m) => m.type === "audio",
-          );
-          if (audioMedia) {
-            await supabase.from("wish_media").delete().eq("id", audioMedia.id);
-          }
-        }
-
-        await uploadFiles(initialData.id);
+        wishId = initialData.id;
+      } else {
+        throw new Error("Missing initial data for edit");
       }
+
+      await persistMedia(wishId);
 
       router.push("/admin/dashboard");
       router.refresh();
@@ -242,16 +257,7 @@ export default function WishForm({ mode, initialData }: WishFormProps) {
           </span>
           Memory Gallery
         </h2>
-        <ImageUploader
-          files={imageFiles}
-          onChange={setImageFiles}
-          existingUrls={existingImages}
-          onRemoveExisting={(url: string) =>
-            setExistingImages((prev: string[]) =>
-              prev.filter((u: string) => u !== url),
-            )
-          }
-        />
+        <ImageUploader items={items} onChange={setItems} />
       </section>
 
       {/* Audio */}

@@ -11,14 +11,16 @@ interface LoveAffirmationsProps {
 }
 
 const affirmationTemplates = [
-  "Your smile lights up every room",
-  "The world is better because you're in it",
-  "You make ordinary moments extraordinary",
-  "Your laughter is the sweetest sound",
-  "You deserve all the happiness in the world",
-  "Every moment with you is a treasure",
-  "You inspire everyone around you",
-  "Your kindness makes hearts glow",
+  "You're the best friend anyone could wish for",
+  "Cute, stubborn, and impossibly lovable",
+  "You'll forever be the kiddo we all adore",
+  "Your laughter could light up a whole sky",
+  "Even when you're being a brat, you're my favorite",
+  "Your stubbornness is secretly your superpower",
+  "Tiny menace, biggest heart",
+  "Arguing with you is weirdly the best part of my day",
+  "You make ordinary days feel like magic",
+  "Best friend, partner-in-crime, eternal kiddo",
 ];
 
 export default function LoveAffirmations({
@@ -29,32 +31,22 @@ export default function LoveAffirmations({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAll, setShowAll] = useState(false);
 
-  const affirmations = useMemo(
-    () => affirmationTemplates.slice(0, 5),
-    [],
-  );
+  const affirmations = useMemo(() => affirmationTemplates, []);
 
-  // Show affirmations one by one
+  // Show affirmations one by one — slower pace so each line is comfortable to read
   useEffect(() => {
     if (currentIndex < affirmations.length) {
       const timer = setTimeout(() => {
         setCurrentIndex((prev) => prev + 1);
-      }, 2200);
+      }, 4000);
       return () => clearTimeout(timer);
     } else {
       // All shown, wait a beat then show the final state
-      const timer = setTimeout(() => setShowAll(true), 800);
+      const timer = setTimeout(() => setShowAll(true), 1200);
       return () => clearTimeout(timer);
     }
   }, [currentIndex, affirmations.length]);
 
-  // Auto-advance after all shown + pause
-  useEffect(() => {
-    if (showAll) {
-      const timer = setTimeout(() => onNext(), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [showAll, onNext]);
 
   return (
     <div
@@ -172,7 +164,7 @@ export default function LoveAffirmations({
         className="absolute bottom-10 text-xs animate-pulse"
         style={{ color: theme.colors.textMuted, opacity: 0.4 }}
       >
-        tap to skip
+        tap to continue
       </p>
     </div>
   );

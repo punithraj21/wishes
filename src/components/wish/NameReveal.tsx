@@ -20,7 +20,7 @@ export default function NameReveal({
   theme,
   onNext,
 }: NameRevealProps) {
-  const [autoAdvanced, setAutoAdvanced] = useState(false);
+  const [advanced, setAdvanced] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -28,19 +28,9 @@ export default function NameReveal({
     requestAnimationFrame(() => setMounted(true));
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!autoAdvanced) {
-        setAutoAdvanced(true);
-        onNext();
-      }
-    }, 6000);
-    return () => clearTimeout(timer);
-  }, [onNext, autoAdvanced]);
-
   const handleSkip = () => {
-    if (!autoAdvanced) {
-      setAutoAdvanced(true);
+    if (!advanced) {
+      setAdvanced(true);
       onNext();
     }
   };

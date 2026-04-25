@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeConfig } from "@/lib/types";
 
@@ -64,17 +64,20 @@ export default function HeartFill({
         rotation: (Math.random() - 0.5) * 40,
       };
 
-      setHearts((prev) => {
-        const next = [...prev, newHeart];
-        if (next.length >= TARGET_HEARTS && !complete) {
-          setComplete(true);
-          setTimeout(() => onNext(), 2000);
-        }
-        return next;
-      });
+      setHearts((prev) => [...prev, newHeart]);
     },
-    [complete, heartColors, onNext],
+    [complete, heartColors],
   );
+
+  // Auto-advance once the heart fills, ~2s pause for celebration.
+  // `complete` deliberately excluded from deps — it's set inside this effect, so
+  // including it would cancel the pending timer the moment it flips true.
+  useEffect(() => {
+    if (hearts.length < TARGET_HEARTS) return;
+    setComplete(true);
+    const t = setTimeout(() => onNext(), 2000);
+    return () => clearTimeout(t);
+  }, [hearts.length, onNext]);
 
   const progress = Math.min(hearts.length / TARGET_HEARTS, 1);
 

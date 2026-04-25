@@ -74,12 +74,6 @@ export default function WishExperience({ wish }: WishExperienceProps) {
     unlockNext();
   }, [unlockNext]);
 
-  const handleReplay = useCallback(() => {
-    setUnlockedSections(1);
-    setStarted(false);
-    scrollToSection(0);
-  }, [scrollToSection]);
-
   return (
     <div
       className="relative w-full overflow-y-auto overflow-x-hidden"
@@ -188,7 +182,6 @@ export default function WishExperience({ wish }: WishExperienceProps) {
               <CelebrationScreen
                 personName={wish.person_name}
                 theme={theme}
-                onReplay={handleReplay}
               />
             )}
           </div>

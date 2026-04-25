@@ -16,13 +16,11 @@ const Fireworks3D = dynamic(() => import("./Fireworks3D"), {
 interface CelebrationScreenProps {
   personName: string;
   theme: ThemeConfig;
-  onReplay: () => void;
 }
 
 export default function CelebrationScreen({
   personName,
   theme,
-  onReplay,
 }: CelebrationScreenProps) {
   const hasLaunched = useRef(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -177,27 +175,13 @@ export default function CelebrationScreen({
           You are loved beyond measure ❤️
         </motion.p>
 
-        {/* Action buttons — elegant ghost style */}
+        {/* Action button */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.2 }}
-          className="flex flex-col sm:flex-row gap-3 justify-center pt-6"
+          className="flex justify-center pt-6"
         >
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onReplay}
-            className="px-6 py-3 rounded-full font-medium border transition-all"
-            style={{
-              borderColor: `${theme.colors.primary}40`,
-              color: theme.colors.text,
-              backgroundColor: `${theme.colors.primary}10`,
-              backdropFilter: "blur(8px)",
-            }}
-          >
-            Replay Experience
-          </motion.button>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}

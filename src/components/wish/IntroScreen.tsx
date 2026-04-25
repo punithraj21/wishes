@@ -29,7 +29,12 @@ export default function IntroScreen({
     const t2 = setTimeout(() => setPhase("portal"), 3500);
     const t3 = setTimeout(() => setPhase("gift"), 5000);
     const t4 = setTimeout(() => setPhase("ready"), 6200);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+    };
   }, []);
 
   // Sparkle particles for the star trail
@@ -70,7 +75,12 @@ export default function IntroScreen({
               background: `radial-gradient(circle at 40% 35%, #FFFDE8, #F5E6B8 40%, #D4C494 70%, #B8A67A)`,
               boxShadow: `0 0 30px rgba(255,253,220,0.6), 0 0 60px ${theme.colors.accent}40, 0 0 120px ${theme.colors.primary}30`,
             }}
-            initial={{ left: "calc(50% - 40px)", top: "85%", opacity: 0, scale: 0.2 }}
+            initial={{
+              left: "calc(50% - 40px)",
+              top: "85%",
+              opacity: 0,
+              scale: 0.2,
+            }}
             animate={{
               top: "30%",
               opacity: [0, 0.8, 1],
@@ -83,22 +93,34 @@ export default function IntroScreen({
             <div
               className="absolute rounded-full"
               style={{
-                width: 12, height: 12, top: "25%", left: "30%",
-                background: "radial-gradient(circle, rgba(180,165,120,0.3), transparent)",
+                width: 12,
+                height: 12,
+                top: "25%",
+                left: "30%",
+                background:
+                  "radial-gradient(circle, rgba(180,165,120,0.3), transparent)",
               }}
             />
             <div
               className="absolute rounded-full"
               style={{
-                width: 8, height: 8, top: "55%", left: "55%",
-                background: "radial-gradient(circle, rgba(180,165,120,0.25), transparent)",
+                width: 8,
+                height: 8,
+                top: "55%",
+                left: "55%",
+                background:
+                  "radial-gradient(circle, rgba(180,165,120,0.25), transparent)",
               }}
             />
             <div
               className="absolute rounded-full"
               style={{
-                width: 15, height: 15, top: "40%", left: "60%",
-                background: "radial-gradient(circle, rgba(180,165,120,0.2), transparent)",
+                width: 15,
+                height: 15,
+                top: "40%",
+                left: "60%",
+                background:
+                  "radial-gradient(circle, rgba(180,165,120,0.2), transparent)",
               }}
             />
           </motion.div>
@@ -197,7 +219,11 @@ export default function IntroScreen({
           {/* Bobbing wrapper — only when not opened */}
           <motion.div
             animate={!opened && phase === "ready" ? { y: [0, -8, 0] } : {}}
-            transition={!opened ? { duration: 2, repeat: Infinity, ease: "easeInOut" } : {}}
+            transition={
+              !opened
+                ? { duration: 2, repeat: Infinity, ease: "easeInOut" }
+                : {}
+            }
             className="relative cursor-pointer"
             onClick={handleOpen}
           >
@@ -232,11 +258,17 @@ export default function IntroScreen({
               <div className="absolute -top-5 left-1/2 -translate-x-1/2 flex gap-0">
                 <div
                   className="w-6 h-5 rounded-full -mr-1"
-                  style={{ backgroundColor: theme.colors.accent, transform: "rotate(-20deg)" }}
+                  style={{
+                    backgroundColor: theme.colors.accent,
+                    transform: "rotate(-20deg)",
+                  }}
                 />
                 <div
                   className="w-6 h-5 rounded-full -ml-1"
-                  style={{ backgroundColor: theme.colors.accent, transform: "rotate(20deg)" }}
+                  style={{
+                    backgroundColor: theme.colors.accent,
+                    transform: "rotate(20deg)",
+                  }}
                 />
                 <div
                   className="absolute left-1/2 -translate-x-1/2 bottom-0 w-3 h-3 rounded-full"
@@ -285,7 +317,12 @@ export default function IntroScreen({
                       background: `linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.15) 48%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.15) 52%, transparent 70%)`,
                     }}
                     animate={{ x: ["-150%", "250%"] }}
-                    transition={{ duration: 2, delay: 1, repeat: Infinity, repeatDelay: 3 }}
+                    transition={{
+                      duration: 2,
+                      delay: 1,
+                      repeat: Infinity,
+                      repeatDelay: 3,
+                    }}
                   />
                 </motion.div>
               )}
@@ -313,7 +350,11 @@ export default function IntroScreen({
                       height: [0, 80 + i * 20],
                       opacity: [0, 0.8, 0],
                     }}
-                    transition={{ duration: 0.6, delay: i * 0.05, ease: "easeOut" }}
+                    transition={{
+                      duration: 0.6,
+                      delay: i * 0.05,
+                      ease: "easeOut",
+                    }}
                   />
                 ))}
               </>
@@ -329,13 +370,16 @@ export default function IntroScreen({
                 ? { opacity: 0.8, width: 200 }
                 : { opacity: [0.3, 0.5, 0.3] }
             }
-            transition={opened ? { duration: 0.3 } : { duration: 2, repeat: Infinity }}
+            transition={
+              opened ? { duration: 0.3 } : { duration: 2, repeat: Infinity }
+            }
           />
         </motion.div>
       )}
 
       {/* Sparkles that appear after star explosion */}
-      {mounted && (phase === "portal" || phase === "gift" || phase === "ready") &&
+      {mounted &&
+        (phase === "portal" || phase === "gift" || phase === "ready") &&
         sparkles.map((s) => (
           <motion.div
             key={s.id}
@@ -370,7 +414,7 @@ export default function IntroScreen({
             className="text-xs uppercase tracking-[0.3em] mb-1"
             style={{ color: theme.colors.textMuted, opacity: 0.6 }}
           >
-            a surprise for
+            a surprise for you
           </p>
           <p
             className="text-2xl md:text-3xl font-light"
