@@ -11,16 +11,16 @@ interface LoveAffirmationsProps {
 }
 
 const affirmationTemplates = [
-  "You're the best friend anyone could wish for",
-  "Cute, stubborn, and impossibly lovable",
-  "You'll forever be the kiddo we all adore",
-  "Your laughter could light up a whole sky",
-  "Even when you're being a brat, you're my favorite",
-  "Your stubbornness is secretly your superpower",
-  "Tiny menace, biggest heart",
-  "Arguing with you is weirdly the best part of my day",
-  "You make ordinary days feel like magic",
-  "Best friend, partner-in-crime, eternal kiddo",
+  "You’re one of the most special people I know",
+  "Cute, stubborn, and somehow always right (or at least you think so 😄)",
+  "You’ll forever be that kiddo with the most adorable vibe",
+  "Your laughter can literally make a bad day better",
+  "Even on your stubborn days, you’re still one of my favorite people",
+  "Your stubbornness… annoying sometimes, but also kind of your charm",
+  "Tiny troublemaker, but with a really big heart",
+  "Arguing with you is weirdly fun… I don’t even mind losing 😌",
+  "You make normal days feel unexpectedly nice",
+  "Not just a friend… you’re someone I genuinely enjoy having in my life",
 ];
 
 export default function LoveAffirmations({
@@ -46,7 +46,6 @@ export default function LoveAffirmations({
       return () => clearTimeout(timer);
     }
   }, [currentIndex, affirmations.length]);
-
 
   return (
     <div
