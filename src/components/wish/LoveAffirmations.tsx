@@ -50,8 +50,10 @@ export default function LoveAffirmations({
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden cursor-pointer"
-      onClick={onNext}
+      className={`min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden ${
+        showAll ? "cursor-pointer" : ""
+      }`}
+      onClick={showAll ? onNext : undefined}
     >
       {/* Soft ambient glow */}
       <motion.div
@@ -159,13 +161,21 @@ export default function LoveAffirmations({
         ))}
       </div>
 
-      {/* Tap hint */}
-      <p
-        className="absolute bottom-10 text-xs animate-pulse"
-        style={{ color: theme.colors.textMuted, opacity: 0.4 }}
-      >
-        tap to continue
-      </p>
+      {/* Tap hint — only after all affirmations have shown */}
+      <AnimatePresence>
+        {showAll && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.4 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6 }}
+            className="absolute bottom-10 text-xs animate-pulse"
+            style={{ color: theme.colors.textMuted }}
+          >
+            tap to continue
+          </motion.p>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
