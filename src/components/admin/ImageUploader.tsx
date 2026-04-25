@@ -113,53 +113,57 @@ export default function ImageUploader({ items, onChange }: ImageUploaderProps) {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: isDragging ? 0.4 : 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                draggable
-                onDragStart={(e) => {
-                  setDraggedId(item.id);
-                  if (e.dataTransfer) {
-                    e.dataTransfer.effectAllowed = "move";
-                    e.dataTransfer.setData("text/plain", item.id);
-                  }
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
-                  if (draggedId && draggedId !== item.id) {
-                    setHoverId(item.id);
-                  }
-                }}
-                onDragLeave={() => {
-                  if (hoverId === item.id) setHoverId(null);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (draggedId) reorder(draggedId, item.id);
-                  setDraggedId(null);
-                  setHoverId(null);
-                }}
-                onDragEnd={() => {
-                  setDraggedId(null);
-                  setHoverId(null);
-                }}
-                className={`relative aspect-square rounded-xl overflow-hidden group cursor-grab active:cursor-grabbing select-none ring-2 ${
-                  isHover ? "ring-violet-400" : "ring-transparent"
-                }`}
+                className="relative aspect-square"
               >
-                <Image
-                  src={src}
-                  alt="Image"
-                  fill
-                  className="object-cover pointer-events-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeItem(item.id)}
-                  draggable={false}
-                  onDragStart={(e) => e.preventDefault()}
-                  className="absolute top-1.5 right-1.5 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                <div
+                  draggable
+                  onDragStart={(e) => {
+                    setDraggedId(item.id);
+                    if (e.dataTransfer) {
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", item.id);
+                    }
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+                    if (draggedId && draggedId !== item.id) {
+                      setHoverId(item.id);
+                    }
+                  }}
+                  onDragLeave={() => {
+                    if (hoverId === item.id) setHoverId(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (draggedId) reorder(draggedId, item.id);
+                    setDraggedId(null);
+                    setHoverId(null);
+                  }}
+                  onDragEnd={() => {
+                    setDraggedId(null);
+                    setHoverId(null);
+                  }}
+                  className={`relative w-full h-full rounded-xl overflow-hidden group cursor-grab active:cursor-grabbing select-none ring-2 ${
+                    isHover ? "ring-violet-400" : "ring-transparent"
+                  }`}
                 >
-                  ✕
-                </button>
+                  <Image
+                    src={src}
+                    alt="Image"
+                    fill
+                    className="object-cover pointer-events-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeItem(item.id)}
+                    draggable={false}
+                    onDragStart={(e) => e.preventDefault()}
+                    className="absolute top-1.5 right-1.5 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                  >
+                    ✕
+                  </button>
+                </div>
               </motion.div>
             );
           })}
