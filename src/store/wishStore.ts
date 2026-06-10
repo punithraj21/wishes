@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { Wish } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 
+
 interface WishState {
   wishes: Wish[];
   currentWish: Wish | null;
